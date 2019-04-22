@@ -152,8 +152,8 @@ void colorGraph() {
     for(int cr = 0; cr < n; cr++)
         available[cr] = true;
 
-    // Assign colors to remaining V-1 vertices
-    VERTEX* currVertex = networkGraph->next;
+    // Assign colors to vertices
+    VERTEX* currVertex = networkGraph;
     while(currVertex != NULL)
     {
         // Process all adjacent vertices and flag their colors

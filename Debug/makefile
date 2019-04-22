@@ -32,10 +32,10 @@ endif
 all: 568Project.elf
 
 # Tool invocations
-568Project.elf: $(OBJS) $(USER_OBJS) C:\Users\Deepak\ Tatachar\ECE362\568Project/LinkerScript.ld
+568Project.elf: $(OBJS) $(USER_OBJS) E:\DRT\Projects\Grad\568\ Project\ECE568Project/LinkerScript.ld
 	@echo 'Building target: $@'
 	@echo 'Invoking: MCU GCC Linker'
-	arm-none-eabi-gcc -mcpu=cortex-m0 -mthumb -mfloat-abi=soft -T"C:/Users/Deepak Tatachar/ECE362/568Project/LinkerScript.ld" -Wl,-Map=output.map -Wl,--gc-sections -o "568Project.elf" @"objects.list" $(USER_OBJS) $(LIBS) -lm
+	arm-none-eabi-gcc -mcpu=cortex-m0 -mthumb -mfloat-abi=soft -T"E:/DRT/Projects/Grad/568 Project/ECE568Project/LinkerScript.ld" -Wl,-Map=output.map -Wl,--gc-sections -o "568Project.elf" @"objects.list" $(USER_OBJS) $(LIBS) -lm
 	@echo 'Finished building target: $@'
 	@echo ' '
 	$(MAKE) --no-print-directory post-build
