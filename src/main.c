@@ -83,7 +83,7 @@ handleGenericPacket(pPacket* packet) {
 
 void sendVertexColor() {
     VERTEX* graph = networkGraph;
-    while(graph->next != NULL) {
+    while(graph != NULL) {
         pPacket packet;
         packet.pDAddr = graph->label;
         packet.pData = &(graph->color);
