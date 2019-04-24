@@ -10,6 +10,7 @@
 
 #include "stm32f0xx.h"
 #include "stm32f0_discovery.h"
+#include "LEDDriver.h"
 
 void initLED() {
     // Using GPIOB PB0, PB5 and PB4
@@ -55,4 +56,48 @@ void setColor(uint8_t r, uint8_t g, uint8_t b) {
     TIM3->CCR1 = r;
     TIM3->CCR2 = g;
     TIM3->CCR3 = b;
+}
+
+void colorTest() {
+    uint8_t r, g, b;
+    r = g = b = 0;
+    COLOR_STATE state = R_UP;
+    while(state != END) {
+        switch(state) {
+        case R_UP:
+            r++;
+            if(r == 255)
+                state = R_DWN_G_UP;
+            break;
+
+        case R_DWN_G_UP:
+            r--;
+            g++;
+
+            if(g == 255)
+                state = G_DWN_B_UP;
+            break;
+
+        case G_DWN_B_UP:
+            g--;
+            b++;
+
+            if(b == 255)
+                state = B_DWN;
+            break;
+
+        case B_DWN:
+            b--;
+            if(b == 0)
+                state = END;
+            break;
+
+        default:
+            state = END;
+            break;
+       }
+
+       setColor(r, g, b);
+       micro_wait(2000);
+    }
 }

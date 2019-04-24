@@ -56,28 +56,27 @@ void EXTI2_3_IRQHandler(void) {
     rfHandleTxRxInterrupt();
 }
 
-
-int main(void)
-{
+void initSystem() {
     initSPI1();
     initLED();
     initDevLED();
-    micro_wait(2000);
-    //rfInit();
-    extiInit();
+    colorTest();
 
-    //rfJoinNetwork();
-    uint8_t r, g, b;
-    r = b= g= 0;
-    b = 150;
+    micro_wait(2000);
+
+    rfInit();
+    extiInit();
+}
+
+
+int main(void)
+{
+    initSystem();
+    rfJoinNetwork();
     while(1)
     {
-        //rfProcessRxQueue();
-        //rfProcessTxQueue();
-        setColor(r, g, b);
-        r++;
-        b++;
-        micro_wait(50000);
+        rfProcessRxQueue();
+        rfProcessTxQueue();
     }
 
     // Negotiate RfAddr
