@@ -32,8 +32,19 @@
 #define RFMSG_NETWORKRESPONSE 6 // message ID - acknowledge network ping
 #define RFMSG_JOIN 7
 #define RFMSG_ROUTEFAILED 8
+#define RFMSG_GENERIC 9        // message ID - generic packet, data handeled by the upper layer
+
+
+#define PACKET_SETCOLOR 1
 
 #define NETWORK_TIMEOUT 500
+
+typedef struct {
+    uint8_t pType;
+    uint8_t* pData;
+    int pDataLength;
+    int pDAddr;
+} pPacket; // protocol packet
 
 typedef struct rfrxmsg {
     uint8_t* data;
@@ -76,6 +87,8 @@ void rfHandleRxInterrupt();
 void rfProcessRxQueue();
 void rfQueueTxMsg(int, int, uint8_t*, int);
 void rfProcessTxQueue();
-
-
+void rfSendPacket(pPacket* packet);
+int isCoordinator();
+int shouldRecolorGraph();
+void graphRecolored();
 #endif /* RFMODULE_H_ */

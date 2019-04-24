@@ -20,7 +20,6 @@
 #define GREEN 0x0000ff00
 #define BLUE  0x000000ff
 
-
 // sRGB format, s not used, B is the lower byte, and so on ..
 typedef uint32_t COLOR;
 

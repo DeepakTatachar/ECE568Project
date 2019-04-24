@@ -13,7 +13,6 @@
 
 VERTEX* networkGraph = NULL;
 
-
 /**
  * @param weight of the edge
  * @param label, the label of the vertex to connect to
@@ -106,11 +105,10 @@ VERTEX* getVertex(int label) {
  */
 int lookup(int color) {
     switch(color) {
-        case BLACK: return 0;
-        case RED:   return 1;
-        case BLUE:  return 2;
-        case GREEN: return 3;
-        default: return 4;
+        case RED:   return 0;
+        case BLUE:  return 1;
+        case GREEN: return 2;
+        default: return 3;
     }
 }
 
@@ -119,24 +117,11 @@ int lookup(int color) {
  */
 int revLookup(int index) {
     switch(index) {
-        case 0: return BLACK;
-        case 1: return RED;
-        case 2: return BLUE;
-        case 3: return GREEN;
+        case 0: return RED;
+        case 1: return BLUE;
+        case 2: return GREEN;
         default: return RED;
     }
-}
-
-void buildDummyGraph() {
-    addVertex(1);
-    addVertex(2);
-    addVertex(3);
-    addVertex(4);
-    addVertex(5);
-    addEdge(1, 2, 0);
-    addEdge(2, 3, 0);
-    addEdge(4, 5, 0);
-    addEdge(1, 5, 0);
 }
 
 /**

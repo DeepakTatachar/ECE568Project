@@ -12,6 +12,8 @@
 #include "rfmodule.h"
 #include "LEDDriver.h"
 
+extern VERTEX* networkGraph;
+
 void initSPI1() {
     /* manually rig CS and run SPI blocking because it doesn't work quite right in the peripheral? */
 
@@ -68,6 +70,28 @@ void initSystem() {
     extiInit();
 }
 
+handleGenericPacket(pPacket* packet) {
+    switch(packet->pType) {
+    case PACKET_SETCOLOR:
+        // packet 0 is s in sRGB
+        setColor(packet->pData[1], packet->pData[2], packet->pData[3]);
+        break;
+    default:
+        break;
+    }
+}
+
+void sendVertexColor() {
+    VERTEX* graph = networkGraph;
+    while(graph->next != NULL) {
+        pPacket packet;
+        packet.pDAddr = graph->label;
+        packet.pData = &(graph->color);
+        packet.pDataLength = 4;
+        rfSendPacket(&packet);
+        graph = graph->next;
+    }
+}
 
 int main(void)
 {
@@ -77,14 +101,13 @@ int main(void)
     {
         rfProcessRxQueue();
         rfProcessTxQueue();
+
+        if(isCoordinator() && shouldRecolorGraph()) {
+            colorGraph();
+            sendVertexColor();
+            graphRecolored();
+        }
     }
-
-    // Negotiate RfAddr
-    // Build graph
-    buildDummyGraph();
-    colorGraph();
-
-
 
     for(;;)
         asm ("wfi");

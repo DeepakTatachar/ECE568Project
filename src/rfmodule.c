@@ -4,6 +4,7 @@
 #include "stm32f0_discovery.h"
 #include "rfmodule.h"
 #include "cbuf.h"
+#include "graph.h"
 
 cbuf_t RxMsgQueue;
 cbuf_t TxMsgQueue;
@@ -18,11 +19,14 @@ char isEstablished = 0;     // is this device part of an established network?
 int parentAddr = 0;
 
 network_neighbor_t neighbors[MAXNETSIZE];
-network_neighbor_t commgraph[MAXNETSIZE];
-int nextNeighbor = 0;
-int nextCommGraph = 0;
-int joinerRoute = 0;
 
+// Network address translation table,
+// given destination address, stores where packet needs to be forwarded to
+network_neighbor_t NAT[MAXNETSIZE];
+int nextNeighbor = 0;
+int nextAddressTranslation = 0;
+int joinerRoute = 0;
+int recolorGraph = 1;
 
 //// Peripheral interface
 int rfSend(int addr, int data)
@@ -114,6 +118,7 @@ void rfInit()
 void rfJoinNetwork()
 {
     // change state to joining
+    // try and join existing network
     while(1)
     {
         // wait for any other joiners to finish joining
@@ -138,47 +143,21 @@ void rfJoinNetwork()
         }
     }
 
-//  // get id from coordinator
-//  while(rfAddr == NID_JOINING)
-//  {
-//      // send id request to coordinator
-//      uint8_t msg = RFMSG_REQID;
-//      rfSendMsg(NID_COORDINATOR, &msg, 1);
-//      while(isTransmitting);
-//
-//      // wait for response
-//      if(!lastTxFailed)
-//      {
-//          int timeout = 0;
-//          while(timeout < NETWORK_TIMEOUT && rfAddr == NID_JOINING)
-//          {
-//              rfProcessRxQueue();
-//              micro_wait(100);
-//              timeout++;
-//          }
-//      }
-//
-//      // no coordinator? promote yourself
-//      else
-//      {
-//          setDeviceShortAddr(NID_COORDINATOR);
-//
-//          // debug
-//          GPIOC->ODR |= (1<<9);
-//      }
-//  }
-
     // get id from coordinator
     while(rfAddr == NID_JOINING)
     {
         // request response from any networked devices
         nextNeighbor = 0;
 
+        // ping everyone to figure out who is closest to you
+        // ping using BROADCAST address
         uint8_t msg = RFMSG_PINGNETWORK;
         rfSendMsg(NID_BROADCAST, &msg, 1);
         while(isTransmitting);
 
         // wait for responses
+        // we wait for all nodes in the network to respond
+        // to the broadcast
         int timeout = 0;
         while(timeout < NETWORK_TIMEOUT)
         {
@@ -187,7 +166,9 @@ void rfJoinNetwork()
             timeout++;
         }
 
-        // no other devices? -> promote yourself
+        // processRxQueue updates nextNeighbours
+        // if there are none, no devices exist in the
+        // network. If there are no other devices? -> promote yourself
         if(nextNeighbor == 0)
         {
             setDeviceShortAddr(NID_COORDINATOR);
@@ -225,8 +206,6 @@ void rfJoinNetwork()
                 rfProcessRxQueue();
                 timeout++;
             }
-
-            int z = 99;
         }
     }
 
@@ -411,14 +390,23 @@ void rfProcessRxQueue()
             {
                 uint8_t id = NID_MEMBERS + nextMemberID++;
 
-                if(nextCommGraph < MAXNETSIZE)
+                // Build the NAT table as we build the network graph
+                if(nextAddressTranslation < MAXNETSIZE)
                 {
-                    commgraph[nextCommGraph].addr = id;
-                    commgraph[nextCommGraph].routeAddr = joinerRoute;
-                    nextCommGraph++;
+                    NAT[nextAddressTranslation].addr = id;
+                    NAT[nextAddressTranslation].routeAddr = joinerRoute;
+                    nextAddressTranslation++;
                 }
 
                 rfQueueTxMsg(rfMsg->sAddr, RFMSG_ASSIGNID, &id, 1);
+
+                // Add the vertex with id
+                addVertex(id);
+
+                // Add a link from the parent to the new leaf
+                // Weight of the link is RSSI
+                addEdge(rfMsg->data[1], id, rfMsg->RSSI);
+                recolorGraph = 1;
             }
 
             // if someone else is already holding a join route, send back error
@@ -446,11 +434,11 @@ void rfProcessRxQueue()
                 uint8_t id = rfMsg->data[0];
                 rfQueueTxMsg(joinerRoute, RFMSG_ASSIGNID, &id, 1);
 
-                if(nextCommGraph < MAXNETSIZE)
+                if(nextAddressTranslation < MAXNETSIZE)
                 {
-                    commgraph[nextCommGraph].addr = id;
-                    commgraph[nextCommGraph].routeAddr = joinerRoute;
-                    nextCommGraph++;
+                    NAT[nextAddressTranslation].addr = id;
+                    NAT[nextAddressTranslation].routeAddr = joinerRoute;
+                    nextAddressTranslation++;
                 }
 
                 joinerRoute = 0;
@@ -481,6 +469,29 @@ void rfProcessRxQueue()
             nextNeighbor++;
         }
 
+        else if(rfMsg->msgType == RFMSG_GENERIC)
+        {
+            // cast data as protocol packet
+            pPacket* packet = (pPacket*) rfMsg->data;
+            // if we are the intended destination
+            if(packet->pDAddr == rfAddr) {
+                handleGenericPacket(packet);
+            }
+
+            // forward message to dest
+            else
+            {
+                // hopId the address to forward the packet to
+                int hopId = rfAddr;
+                for(int i = 0; i < MAXNETSIZE; i++) {
+                    if(NAT[i].addr == packet->pDAddr) {
+                        hopId = NAT[i].routeAddr;
+                    }
+                }
+
+                rfQueueTxMsg(hopId, RFMSG_GENERIC, &(rfMsg->data), rfMsg->dataLength);
+            }
+        }
 
         if(rfMsg->dataLength > 0)
         {
@@ -521,3 +532,27 @@ void rfProcessTxQueue()
     }
 }
 
+void rfSendPacket(pPacket* packet) {
+    int hopId = rfAddr;
+    for(int i = 0; i < MAXNETSIZE; i++) {
+        if(NAT[i].addr == packet->pDAddr) {
+            hopId = NAT[i].routeAddr;
+        }
+    }
+
+    rfQueueTxMsg(hopId, RFMSG_GENERIC, &(packet->pData), packet->pDataLength);
+}
+
+int isCoordinator() {
+    if(rfAddr == NID_COORDINATOR)
+        return 1;
+    return 0;
+}
+
+int shouldRecolorGraph() {
+    return recolorGraph;
+}
+
+void graphRecolored() {
+    recolorGraph = 0;
+}
