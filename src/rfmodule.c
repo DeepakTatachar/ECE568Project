@@ -253,12 +253,12 @@ void rfSendTestMsg()
 
     //assignMemberID();
 
-    uint8_t data = {0x25, 0x25, 0x25 };
+    uint8_t data[] = {0x25, 0x25, 0x25, 0x00 };
     pPacket packet;
     packet.pType = PACKET_SETCOLOR;
     packet.pDAddr = 48;
     packet.pData = data;
-    packet.pDataLength = 3;
+    packet.pDataLength = 4;
     rfSendPacket(&packet);
 }
 
