@@ -13,6 +13,7 @@
 #include "LEDDriver.h"
 
 extern VERTEX* networkGraph;
+extern int rfAddr;
 
 void initSPI1() {
     /* manually rig CS and run SPI blocking because it doesn't work quite right in the peripheral? */
@@ -70,12 +71,18 @@ void initSystem() {
     extiInit();
 }
 
+
+
 handleGenericPacket(pPacket* packet) {
     switch(packet->pType) {
-    case PACKET_SETCOLOR:
-        // packet 0 is s in sRGB
-        setColor(packet->pData[1], packet->pData[2], packet->pData[3]);
+    case PACKET_SETCOLOR: {
+
+        uint8_t r = packet->pData[0];
+        uint8_t g = packet->pData[1];
+        uint8_t b = packet->pData[2];
+        setColor(r, g, b);
         break;
+    }
     default:
         break;
     }
@@ -85,9 +92,17 @@ void sendVertexColor() {
     VERTEX* graph = networkGraph;
     while(graph != NULL) {
         pPacket packet;
+
+        packet.pType = PACKET_SETCOLOR;
         packet.pDAddr = graph->label;
         packet.pData = &(graph->color);
         packet.pDataLength = 4;
+
+        if(graph->label == rfAddr) {
+            setColor32(graph->color);
+            graph= graph->next;
+            continue;
+        }
         rfSendPacket(&packet);
         graph = graph->next;
     }

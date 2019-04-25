@@ -16,9 +16,9 @@
 
 #define WHITE 0x00ffffff
 #define BLACK 0x00000000
-#define RED   0x00ff0000
-#define GREEN 0x0000ff00
-#define BLUE  0x000000ff
+#define RED   0x00250000
+#define GREEN 0x00002500
+#define BLUE  0x00000025
 
 // sRGB format, s not used, B is the lower byte, and so on ..
 typedef uint32_t COLOR;

@@ -173,6 +173,7 @@ void rfJoinNetwork()
         {
             setDeviceShortAddr(NID_COORDINATOR);
             isEstablished = 1;
+            addVertex(rfAddr);
 
             // debug
             GPIOC->ODR |= (1<<9);
@@ -231,18 +232,18 @@ void setDeviceShortAddr(int addr)
 
 void rfSendTestMsg()
 {
-    uint8_t data[16];
+    //uint8_t data[16];
 
-    for(int cx = 0; cx < 16; cx++)
+    /*for(int cx = 0; cx < 16; cx++)
     {
         data[cx] = cx+1;
-    }
+    }*/
 
 //  data[0] = 2;
 
     //rfSendMsg(NID_COORDINATOR, data, 16);
 
-    rfQueueTxMsg(NID_BROADCAST, RFMSG_BLINK, data, 16);
+    //rfQueueTxMsg(NID_BROADCAST, RFMSG_BLINK, data, 16);
 
 //  uint8_t msg = RFMSG_REQID;
 //  rfSendMsg(0x03, &msg, 1);
@@ -251,6 +252,14 @@ void rfSendTestMsg()
     //rfSendMsg(0x03, data, 16);
 
     //assignMemberID();
+
+    uint8_t data = {0x25, 0x25, 0x25 };
+    pPacket packet;
+    packet.pType = PACKET_SETCOLOR;
+    packet.pDAddr = 48;
+    packet.pData = data;
+    packet.pDataLength = 3;
+    rfSendPacket(&packet);
 }
 
 void rfSendMsg(int dsAddr, uint8_t* data, int datasize)
@@ -394,7 +403,13 @@ void rfProcessRxQueue()
                 if(nextAddressTranslation < MAXNETSIZE)
                 {
                     NAT[nextAddressTranslation].addr = id;
-                    NAT[nextAddressTranslation].routeAddr = joinerRoute;
+
+                    //  This is the parent node, i.e not routed through any other node
+                    if(joinerRoute == 0)
+                        NAT[nextAddressTranslation].routeAddr = id;
+                    // Route through intermediate node
+                    else
+                        NAT[nextAddressTranslation].routeAddr = joinerRoute;
                     nextAddressTranslation++;
                 }
 
@@ -471,11 +486,16 @@ void rfProcessRxQueue()
 
         else if(rfMsg->msgType == RFMSG_GENERIC)
         {
-            // cast data as protocol packet
-            pPacket* packet = (pPacket*) rfMsg->data;
+            // unpack protocol packet
+            pPacket packet;
+            packet.pType = rfMsg->data[0];
+            packet.pDataLength = rfMsg->data[1];
+            packet.pDAddr = rfMsg->data[2];
+            packet.pData = &(rfMsg->data[3]);
+
             // if we are the intended destination
-            if(packet->pDAddr == rfAddr) {
-                handleGenericPacket(packet);
+            if(packet.pDAddr == rfAddr) {
+                handleGenericPacket(&packet);
             }
 
             // forward message to dest
@@ -484,13 +504,18 @@ void rfProcessRxQueue()
                 // hopId the address to forward the packet to
                 int hopId = rfAddr;
                 for(int i = 0; i < MAXNETSIZE; i++) {
-                    if(NAT[i].addr == packet->pDAddr) {
+                    if(NAT[i].addr == packet.pDAddr) {
                         hopId = NAT[i].routeAddr;
                     }
                 }
 
-                rfQueueTxMsg(hopId, RFMSG_GENERIC, &(rfMsg->data), rfMsg->dataLength);
+                rfQueueTxPacketMsg(hopId, packet);
             }
+
+            // debug only
+            GPIOC->ODR |= (1<<8);
+            micro_wait(100000);
+            GPIOC->ODR &= ~(1<<8);
         }
 
         if(rfMsg->dataLength > 0)
@@ -520,6 +545,27 @@ void rfQueueTxMsg(int dsAddr, int msgType, uint8_t* body, int bodyLength)
     cbuf_insert(&TxMsgQueue, (uint32_t)txMsg);
 }
 
+void rfQueueTxPacketMsg(int dsAddr, pPacket* packet)
+{
+    rftxmsg_t *txMsg = malloc(sizeof(rftxmsg_t));
+    uint8_t *data = malloc(4 + packet->pDataLength);
+
+    data[0] = RFMSG_GENERIC;
+    data[1] = packet->pType;
+    data[2] = packet->pDataLength;
+    data[3] = packet->pDAddr;
+    for(int cx = 0; cx < packet->pDataLength; cx++)
+    {
+        data[cx+4] = packet->pData[cx];
+    }
+
+    txMsg->dataLength = 4 + packet->pDataLength;
+    txMsg->data = data;
+    txMsg->dAddr = dsAddr;
+
+    cbuf_insert(&TxMsgQueue, (uint32_t)txMsg);
+}
+
 void rfProcessTxQueue()
 {
     if(isTransmitting == 0 && !cbuf_empty(&TxMsgQueue))
@@ -540,7 +586,7 @@ void rfSendPacket(pPacket* packet) {
         }
     }
 
-    rfQueueTxMsg(hopId, RFMSG_GENERIC, &(packet->pData), packet->pDataLength);
+    rfQueueTxPacketMsg(hopId, packet);
 }
 
 int isCoordinator() {

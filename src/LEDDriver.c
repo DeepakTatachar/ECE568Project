@@ -58,6 +58,12 @@ void setColor(uint8_t r, uint8_t g, uint8_t b) {
     TIM3->CCR3 = b;
 }
 
+void setColor32(uint32_t srgb) {
+    TIM3->CCR1 = (srgb & (0xff0000)) >> 16;
+    TIM3->CCR2 = (srgb & (0x00ff00)) >> 8;
+    TIM3->CCR3 = srgb & (0xff);
+}
+
 void colorTest() {
     uint8_t r, g, b;
     r = g = b = 0;
