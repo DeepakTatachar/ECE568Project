@@ -405,12 +405,19 @@ void rfProcessRxQueue()
                     NAT[nextAddressTranslation].addr = id;
 
                     //  This is the parent node, i.e not routed through any other node
-                    if(joinerRoute == 0)
+                    if(rfMsg->sAddr == NID_JOINING)
                         NAT[nextAddressTranslation].routeAddr = id;
                     // Route through intermediate node
                     else
-                        NAT[nextAddressTranslation].routeAddr = joinerRoute;
+                        NAT[nextAddressTranslation].routeAddr = rfMsg->sAddr;
                     nextAddressTranslation++;
+                }
+
+                // joining device will be a neighbor
+                if(rfMsg->sAddr == NID_JOINING && nextNeighbor < MAXNETSIZE)
+                {
+					neighbors[nextNeighbor].addr = id;
+					nextNeighbor++;
                 }
 
                 rfQueueTxMsg(rfMsg->sAddr, RFMSG_ASSIGNID, &id, 1);
@@ -454,6 +461,13 @@ void rfProcessRxQueue()
                     NAT[nextAddressTranslation].addr = id;
                     NAT[nextAddressTranslation].routeAddr = joinerRoute;
                     nextAddressTranslation++;
+                }
+
+                // joining device will be a neighbor
+                if(joinerRoute == NID_JOINING && nextNeighbor < MAXNETSIZE)
+                {
+                	neighbors[nextNeighbor].addr = id;
+					nextNeighbor++;
                 }
 
                 joinerRoute = 0;
@@ -511,11 +525,6 @@ void rfProcessRxQueue()
 
                 rfQueueTxPacketMsg(hopId, packet);
             }
-
-            // debug only
-            GPIOC->ODR |= (1<<8);
-            micro_wait(100000);
-            GPIOC->ODR &= ~(1<<8);
         }
 
         if(rfMsg->dataLength > 0)
@@ -579,7 +588,7 @@ void rfProcessTxQueue()
 }
 
 void rfSendPacket(pPacket* packet) {
-    int hopId = rfAddr;
+    int hopId = parentAddr;
     for(int i = 0; i < MAXNETSIZE; i++) {
         if(NAT[i].addr == packet->pDAddr) {
             hopId = NAT[i].routeAddr;
