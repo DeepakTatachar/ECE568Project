@@ -34,8 +34,9 @@
 #define RFMSG_ROUTEFAILED 8
 #define RFMSG_GENERIC 9        // message ID - generic packet, data handeled by the upper layer
 
-
 #define PACKET_SETCOLOR 1
+#define PACKET_TRIGGER 2
+#define PACKET_UNTRIGGER 3
 
 #define NETWORK_TIMEOUT 500
 
