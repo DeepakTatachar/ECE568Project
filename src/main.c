@@ -113,11 +113,6 @@ void initSystem() {
 handleGenericPacket(pPacket* packet) {
     switch(packet->pType) {
     case PACKET_SETCOLOR: {
-
-//        uint8_t r = packet->pData[0];
-//        uint8_t g = packet->pData[1];
-//        uint8_t b = packet->pData[2];
-//        setColor(r, g, b);
     	assignedColor = packet->pData[0] << 16 | packet->pData[1] << 8 | packet->pData[2];
     	clearAllTriggers();
         break;
@@ -230,10 +225,13 @@ void triggerNeighbors(int trigger)
 	}
 }
 
+
+
 int main(void)
 {
     initSystem();
     rfJoinNetwork();
+
     while(1)
     {
         rfProcessRxQueue();
@@ -250,3 +248,5 @@ int main(void)
     for(;;)
         asm ("wfi");
 }
+
+
