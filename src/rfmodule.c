@@ -104,7 +104,8 @@ void rfInit()
     rfSend(0x3E, 0x40);
     rfSend(0x32, 0xF6);         // interrupt on normal tx/rx
     rfLongSend(0x200, 0x63);    // ch 17
-    rfLongSend(0x203, 0x00);    // set transmit power (max)
+    //rfLongSend(0x203, 0x00);    // set transmit power (max)
+    rfLongSend(0x203, 0x80);	// set transmit power (-20dB)
     rfSend(0x36, 0x04);
     rfSend(0x36, 0x00);
     micro_wait(200);
@@ -427,7 +428,10 @@ void rfProcessRxQueue()
 
                 // Add a link from the parent to the new leaf
                 // Weight of the link is RSSI
-                addEdge(rfMsg->data[1], id, rfMsg->RSSI);
+                addEdge(rfMsg->data[0], id, rfMsg->RSSI);
+
+                // Add edge in both directions
+                addEdge(id, rfMsg->data[0], rfMsg->RSSI);
                 recolorGraph = 1;
             }
 
@@ -459,7 +463,7 @@ void rfProcessRxQueue()
                 if(nextAddressTranslation < MAXNETSIZE)
                 {
                     NAT[nextAddressTranslation].addr = id;
-                    NAT[nextAddressTranslation].routeAddr = joinerRoute;
+                    NAT[nextAddressTranslation].routeAddr = joinerRoute == NID_JOINING ? id : joinerRoute;
                     nextAddressTranslation++;
                 }
 
@@ -523,7 +527,7 @@ void rfProcessRxQueue()
                     }
                 }
 
-                rfQueueTxPacketMsg(hopId, packet);
+                rfQueueTxPacketMsg(hopId, &packet);
             }
         }
 
@@ -584,6 +588,28 @@ void rfProcessTxQueue()
 
         free(txMsg->data);
         free(txMsg);
+
+        //// this might lock the system, need to implement timed resend
+		//	int transmitSuccess = 1;
+		//	if(txMsg->data[0] == RFMSG_GENERIC)
+		//	{
+		//		while(isTransmitting);
+		//		if(lastTxFailed || lastTxChBusy)
+		//		{
+		//			transmitSuccess = 0;
+		//		}
+		//	}
+		//
+		//	if(transmitSuccess)
+		//	{
+		//		free(txMsg->data);
+		//		free(txMsg);
+		//	}
+		//	else
+		//	{
+		//		cbuf_insert(&TxMsgQueue, (uint32_t)txMsg);
+		//	}
+
     }
 }
 
