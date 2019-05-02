@@ -105,10 +105,13 @@ VERTEX* getVertex(int label) {
  */
 int lookup(int color) {
     switch(color) {
-        case RED:   return 0;
-        case BLUE:  return 1;
-        case GREEN: return 2;
-        default: return 3;
+        case CYAN:   return 0;
+        case GREEN:  return 1;
+        case PINK: return 2;
+        case RED:  return 3;
+        case BLUE: return 4;
+        case YELL: return 5;
+        default: return 5;
     }
 }
 
@@ -117,10 +120,13 @@ int lookup(int color) {
  */
 int revLookup(int index) {
     switch(index) {
-        case 0: return RED;
-        case 1: return BLUE;
-        case 2: return GREEN;
-        default: return RED;
+    case 0: return CYAN;
+    case 1: return GREEN; // return 1;
+    case 2:return PINK;// return 2;
+    case 3: return RED;//:  return 3;
+    case 4: return BLUE;//: return 4;
+    case 5: return YELL;//: return 5;
+        default: return YELL;
     }
 }
 
